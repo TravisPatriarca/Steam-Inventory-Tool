@@ -3,46 +3,46 @@ const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
 
-let invItems = [];
-const genreOptions = {
-    headers: {
-        cookie: 'birthtime=36000000'
-    }
-}
-//GET INVENTORY ITEMS
+//get inventory items
 async function getInvItems() {
     const SUPPORTED_GAME_IDS = [730];
-    let gameInvUrl = 'https://steamcommunity.com/id/vintendi/inventory/#' + SUPPORTED_GAME_IDS[0];
+    let gameInvUrl = 'https://steamcommunity.com/id/vintendi/inventory/json/' + SUPPORTED_GAME_IDS[0] + '/2/';
     let gameInvResponse = await fetch(gameInvUrl);
-    let gameInvHtml = await gameInvResponse.text();
+    let gameInvJson = await gameInvResponse.json();
 
-    let $ = cheerio.load(gameInvHtml, genreOptions);
-    console.log($.html());
-    $('.inventory_item_link').each(function(i, obj) {
-        invItems[i] = $(this).attr('href');
+    let itemArray = [];
+    Object.values(gameInvJson['rgDescriptions']).forEach(element => {
+        let item = {
+            icon_url: element['icon_url'],
+            market_name: element['market_name'],
+            colour: typeof element['tags'][2]['color'] !== 'undefined' ? element['tags'][2]['color'] : 'bfbfbf' 
+        }
+
+        itemArray.push(item);
     });
 
-    console.log(invItems.length);
-    console.log(gameInvUrl)
+    //console.log(itemArray);
+    return itemArray;
+}
 
-    fs.writeFile(path.join(__dirname, 'test.html'), $.root().html(), {'encoding': 'utf-8'}, function (err) {
+
+//create html page
+function createHtml(inputPath, outputPath, itemArray) {
+    let $ = cheerio.load(fs.readFileSync(inputPath));
+    $('#item-info').html('testing 123');
+
+    fs.writeFile(outputPath, $.root().html(), {'encoding': 'utf-8'}, function (err) {
         if (err) {
             return console.log(err);
         }
     });
 }
-getInvItems();
 
-/*//SAVE CHEERIO FILE
-const HTML_FILE_PATH_IN = path.join(__dirname, 'template.html');
-const HTML_FILE_PATH_OUT = path.join(__dirname, 'index.html');
-let $ = cheerio.load(fs.readFileSync(HTML_FILE_PATH_IN));
-$('#item-info').html('testing 123');
+function main() {
+    const HTML_FILE_PATH_IN = path.join(__dirname, 'template.html');
+    const HTML_FILE_PATH_OUT = path.join(__dirname, 'index.html');
+    let itemArray = getInvItems();
+    createHtml(HTML_FILE_PATH_IN, HTML_FILE_PATH_OUT, itemArray);
+}
 
-console.log($.root().html());
-
-fs.writeFile(HTML_FILE_PATH_OUT, $.root().html(), {'encoding': 'utf-8'}, function (err) {
-    if (err) {
-        return console.log(err);
-    }
-});*/
+main();
